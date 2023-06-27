@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<link rel="stylesheet" href="leaflet/leaflet.css" type="text/css" />
+		<script src="leaflet/leaflet.js"></script>
+		<script src="leaflet/leaflet.shapefile/shp.js"></script>
+		<script src="leaflet/leaflet.shapefile/leaflet.shpfile.js"></script>
+		<script src="leaflet/leaflet.shapefile/catiline.js"></script>
+	</head>
+	<body>
+		leaflet
+		<label for="input">Select a zipped shapefile:</label> <input type="file" id="file"> <br>
+		<input type="submit" id="submit"> <span id="warning"></span>
+		<div id="map" style="width: 1500px; height: 800px">
+			<script>
+				// création de l'objet carte
+				var map = L.map('map');
+				// Centrer la vue sur Paris lat=48.853, long=2.348 et zoom=12
+				map.setView([48.853,2.348],12);
+				// création d'une couche OpenStreetMap (osm)
+				var osmLayer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png');
+				// Ajout de la couche osm à la carte
+				osmLayer.addTo(map); // ou map.addLayer(osmLayer);
+
+				var f = new File([""], "data/departement.zip");
+				console.log("hé", f)
+				// var rawFile = new XMLHttpRequest();
+				// rawFile.open("GET", "file://C/Users/Nicolas/Documents/AgroF/data/departement.zip", false);
+				// rawFile.send(null);
+				handleZipFile(f);
+
+				document.getElementById("submit").onclick = function(e){
+					var files = document.getElementById('file').files;
+					if (files.length == 0) {
+					return; //do nothing if no file given yet
+				}
+				
+				var file = files[0];
+				
+				if (file.name.slice(-3) != 'zip'){ //Demo only tested for .zip. All others, return.
+						document.getElementById('warning').innerHTML = 'Select .zip file';  	
+				return;
+				} else {
+					document.getElementById('warning').innerHTML = ''; //clear warning message.
+				handleZipFile(file);
+				}
+				};
+
+				//More info: https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+				function handleZipFile(file) {
+					var reader = new FileReader();
+					reader.onload = function() {
+					//   if (reader.readyState != 2 || reader.error){
+					// 	  return;
+					//   } else {
+						// convertToLayer(reader.result);
+						convertToLayer(file);
+						console.log("99", reader.result)
+					// }
+					}
+					reader.readAsArrayBuffer(file);
+					console.log("Salut")
+				}
+
+				function convertToLayer(buffer){
+					console.log("Bien ?")
+					shp(buffer).then(function(geojson){	//More info: https://github.com/calvinmetcalf/shapefile-js
+						// console.log("Bien !", geojson)
+						// var layer = L.shapefile(geojson).addTo(map); //More info: https://github.com/calvinmetcalf/leaflet.shapefile
+						// console.log("Pourquoi ?", geojson)
+						// // console.log(layer);
+						// console.log("Bien !")
+						var geojsonLayer = new L.GeoJSON(geojson);
+						geojsonLayer.addTo(map);
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>

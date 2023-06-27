@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<link rel="stylesheet" href="leaflet/leaflet.css" type="text/css" />
+		<script src="leaflet/leaflet.js"></script>
+		<script src="leaflet/leaflet.shapefile/shp.js"></script>
+		<script src="leaflet/leaflet.shapefile/leaflet.shpfile.js"></script>
+		<script src="leaflet/leaflet.shapefile/catiline.js"></script>
+	</head>
+	<body>
+		leaflet
+		<div id="map" style="width: 1500px; height: 800px">
+			<script>
+				// création de l'objet carte
+				var map = L.map('map');
+				// Centrer la vue sur Paris lat=48.853, long=2.348 et zoom=12
+				map.setView([48.853,2.348],12);
+				// création d'une couche OpenStreetMap (osm)
+				var osmLayer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png');
+				// Ajout de la couche osm à la carte
+				osmLayer.addTo(map); // ou map.addLayer(osmLayer);
+				// function readGeojson(fichier){
+				// 	var xmlhttp = new XMLHttpRequest();
+				// 	xmlhttp.open("GET",fichier , false);
+				// 	xmlhttp.overrideMimeType("application/json");
+				// 	xmlhttp.send();
+				// 	return JSON.parse(xmlhttp.responseText);
+				// }
+				// var geojsonLayer = new L.GeoJSON(readGeojson("data/regions.geojson"));
+				// geojsonLayer.addTo(map);
+				var shapeLayer = L.shapefile("data/departement.zip");
+				shapeLayer.addTo(map);
+				// var shapeLayer = new L.Shapefile("data/departement.zip");
+				// shapeLayer.addTo(map);
+			</script>
+		</div>
+	</body>
+</html>

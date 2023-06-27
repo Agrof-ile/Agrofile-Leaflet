@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<link rel="stylesheet" href="leaflet/leaflet.css" type="text/css" />
+		<script src="leaflet/leaflet.js"></script>
+		<script src="leaflet/leaflet.shapefile/shp.js"></script>
+		<script src="leaflet/leaflet.shapefile/leaflet.shpfile.js"></script>
+		<script src="leaflet/leaflet.shapefile/catiline.js"></script>
+	</head>
+	<body>
+		leaflet
+		<label for="input">Select a zipped shapefile:</label> <input type="file" id="file"> <br>
+		<input type="submit" id="submit"> <span id="warning"></span>
+		<div id="map" style="width: 1500px; height: 800px">
+			<script>
+				map = L.map('map', {
+					center: [7.2, 40.9],
+					zoom: 2
+				});
+
+				L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+				}).addTo(map);
+
+
+				document.getElementById("submit").onclick = function(e){
+					var files = document.getElementById('file').files;
+					if (files.length == 0) {
+						return; //do nothing if no file given yet
+					}
+				
+					var file = files[0];
+					
+					if (file.name.slice(-3) != 'zip') { //Demo only tested for .zip. All others, return.
+						document.getElementById('warning').innerHTML = 'Select .zip file';
+						console.log("Dommage")
+						return;
+					} else {
+						document.getElementById('warning').innerHTML = ''; //clear warning message.
+						console.log("Youhou")
+						handleZipFile(file);
+					}
+				};
+
+				//More info: https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+				function handleZipFile(file) {
+					var reader = new FileReader();
+					reader.onload = function() {
+					//   if (reader.readyState != 2 || reader.error){
+					// 	  return;
+					//   } else {
+						convertToLayer(reader.result);
+						console.log("99", reader.result)
+					// }
+					}
+					reader.readAsArrayBuffer(file);
+					console.log("Salut")
+				}
+
+				function convertToLayer(buffer){
+					console.log("Bien ?")
+					shp(buffer).then(function(geojson){	//More info: https://github.com/calvinmetcalf/shapefile-js
+						// console.log("Bien !", geojson)
+						// var layer = L.shapefile(geojson).addTo(map); //More info: https://github.com/calvinmetcalf/leaflet.shapefile
+						// console.log("Pourquoi ?", geojson)
+						// // console.log(layer);
+						// console.log("Bien !")
+						var geojsonLayer = new L.GeoJSON(geojson);
+						geojsonLayer.addTo(map);
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>
