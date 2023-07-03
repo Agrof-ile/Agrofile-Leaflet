@@ -1,6 +1,5 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const path = require('path');
-// const Buffer = require('buffer/').Buffer;
 
 const NodePolyfillWebpackPlugin = require('node-polyfill-webpack-plugin');
 
@@ -57,19 +56,6 @@ module.exports = {
 		port: 4000,
 	}
 };
-
-// const webpackConfig = {
-// 	resolve: {
-// 	    fallback: {
-// 		buffer: require.resolve('buffer/'),
-// 	    },
-// 	},
-// 	plugins: [
-// 	    new webpack.ProvidePlugin({
-// 		Buffer: ['buffer', 'Buffer'],
-// 	    }),
-// 	],
-//     };
 
 if (module.hot)
   module.hot.accept()
