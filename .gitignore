@@ -1,4 +1,9 @@
+build/
 data/
+dist/
 leaflet/
+node_modules/
+help
+src/app.ts
 *.pdf
 *.txt

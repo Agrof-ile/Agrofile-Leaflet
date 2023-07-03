@@ -23,6 +23,13 @@
 				attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 				}).addTo(map);
 
+				// var shapeLayer = new L.Shapefile("data/departement.zip");
+				// shapeLayer.addTo(map);
+
+				satelliteLayer = new L.imageOverlay('data/landsat.png', [[44.70723, -0.784355], [44.968463, -0.3957438]]);
+				satelliteLayer.addTo(map);
+
+				// http://jsfiddle.net/ashalota/fgqjkxb8/
 
 				document.getElementById("submit").onclick = function(e){
 					var files = document.getElementById('file').files;
