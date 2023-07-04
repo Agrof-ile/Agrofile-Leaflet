@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
+    "fs": "^0.0.1-security",
     "leaflet": "^1.9.4",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "shpjs": "^4.0.4"
