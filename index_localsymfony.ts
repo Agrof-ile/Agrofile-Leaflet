@@ -23,16 +23,16 @@ let load_map = async function(): Promise<void> {
 	// // console.log(satelliteLayer);
 
 	let metadata_to_shp = Object({
-		"CaracteristiquesFoncierNicolasTest2": "departement.zip",
-		"CaracteristiquesFoncierEssai2": "ne_10m_airports.zip"
+		"CaracteristiquesFoncierNicolasTest2": "data/shp/departement.zip",
+		"CaracteristiquesFoncierEssai2": "data/shp/ne_10m_airports.zip"
 	})
 
-	let metadata = (await axios.get("/?api/carto/form")).data
+	let metadata = (await axios.get("/data/form_res.json")).data
 	console.log(metadata)
 	let fields = L.layerGroup()
 	metadata.features.forEach(async (feature: { id: string | number; properties: any }) => {
 		let zipshp_filename = metadata_to_shp[feature.id]
-		console.log("Salut", window.location.href)
+		console.log(`${window.location.href}${zipshp_filename}`)
 		let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
 		// let current_path = window.location.href
 		// let domain = current_path.substring(0, current_path.length-7)
