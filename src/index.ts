@@ -31,16 +31,14 @@ let load_map = async function(): Promise<void> {
 	console.log(metadata)
 	let fields = L.layerGroup()
 	metadata.features.forEach(async (feature: { id: string | number; properties: any }) => {
-		let zipshp_filename = metadata_to_shp[feature.id]
+		const zipshp_filename = metadata_to_shp[feature.id]
 		console.log("Salut", window.location.href)
-		let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
-		// let current_path = window.location.href
-		// let domain = current_path.substring(0, current_path.length-7)
-		// console.log(domain)
-		// let path_to_shp = `${domain}/?api/carto/shp/${zipshp_filename}`
-		// console.log(path_to_shp)
-		// let geojson = await shp(path_to_shp) as GeoJSON.FeatureCollection
-		// console.log(departements_geojson)
+		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
+		const origin_path = window.location.origin
+		const path_to_shp = `${origin_path}/data/shp/${zipshp_filename}`
+		console.log("Deux", path_to_shp)
+		let geojson = await shp(path_to_shp) as GeoJSON.FeatureCollection
+		console.log(geojson)
 		var geojson_layer = new L.GeoJSON(geojson);
 		geojson_layer.bindPopup('<p>You are here ' + "username" + '</p>' + feature.properties.bf_nomfiche);
 		fields.addLayer(geojson_layer);
