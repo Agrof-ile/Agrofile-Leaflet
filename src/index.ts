@@ -9,7 +9,7 @@ let load_map = async function(): Promise<void> {
 		zoom: 2
 	});
 
-	let osm = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	const osm = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 		attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 	});
 	osm.addTo(lmap);
@@ -22,33 +22,46 @@ let load_map = async function(): Promise<void> {
 	// satelliteLayer.addTo(lmap);
 	// // console.log(satelliteLayer);
 
-	let metadata_to_shp = Object({
-		"CaracteristiquesFoncierNicolasTest2": "departement.zip",
-		"CaracteristiquesFoncierEssai2": "ne_10m_airports.zip"
-	})
+	const form_id_json = (await axios.get(`/?api/carto/map_form_id`)).data
+	console.log("form_id_json:", form_id_json)
+	const map_form_id = form_id_json["map_form_id"]
+	console.log("map_form_id:", map_form_id)
 
-	let metadata = (await axios.get("/?api/carto/form")).data
-	console.log(metadata)
+	const geojson_form = (await axios.get(`/?api/forms/${map_form_id}/entries/geojson`)).data
+	console.log("geojson_form:", geojson_form)
+
+	// const metadata_to_shp = Object({
+	// 	"CaracteristiquesFoncierNicolasTest2": "departement.zip",
+	// 	"CaracteristiquesFoncierEssai2": "ne_10m_airports.zip"
+	// })
+
+	// const metadata = (await axios.get("/?api/carto/form")).data
+	// console.log(metadata)
+
+	await axios.get(`/?api/carto/ruzip`)
+
 	let fields = L.layerGroup()
-	metadata.features.forEach(async (feature: { id: string | number; properties: any }) => {
-		const zipshp_filename = metadata_to_shp[feature.id]
-		console.log("Salut", window.location.href)
+	geojson_form.features.forEach(async (feature: { id: string | number; properties: any }) => {
+		const zipshp_filename = feature["properties"]["fichiershp_file"]
+		console.log("window.location.href", window.location.href)
 		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
 		const origin_path = window.location.origin
-		const path_to_shp = `${origin_path}/data/shp/${zipshp_filename}`
-		console.log("Deux", path_to_shp)
-		let geojson = await shp(path_to_shp) as GeoJSON.FeatureCollection
-		console.log(geojson)
-		var geojson_layer = new L.GeoJSON(geojson);
+		const path_to_shp = `${origin_path}/files/${zipshp_filename}`
+		console.log("path_to_shp_zipendno", path_to_shp)
+		const path_to_shp_zipendok = path_to_shp.substring(0, path_to_shp.length-1)
+		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
+		const geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
+		console.log("geojson", geojson)
+		const geojson_layer = new L.GeoJSON(geojson);
 		geojson_layer.bindPopup('<p>You are here ' + "username" + '</p>' + feature.properties.bf_nomfiche);
 		fields.addLayer(geojson_layer);
 	});
 	fields.addTo(lmap);
 
-	let baseMaps = {
+	const baseMaps = {
 		"OpenStreetMap": osm
 	};
-	let overlayMaps = {
+	const overlayMaps = {
 		"Parcellaires": fields
 	};
 	L.control.layers(baseMaps, overlayMaps).addTo(lmap);
