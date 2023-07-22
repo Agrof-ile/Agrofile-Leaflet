@@ -3,15 +3,94 @@ import "leaflet/dist/leaflet.css";
 import shp from "shpjs";
 import axios from "axios";
 
-let find_column_key = function(columns: any[], id: string): any {
+let find_prop_options_i = function(columns: any[], prop_id: string): any {
+	console.log("columns", columns)
+	console.log("prop_id", prop_id)
 	const keys: any[] = Object.keys(columns)
 	for (let i = 0; i < keys.length; i++) {
-		if (columns[keys[i]]["id"] === id) {
+		if (columns[keys[i]]["id"] === prop_id) {
+			console.log("found")
 			return keys[i]
 		}
 	}
 	console.log("wtf")
 	return undefined
+}
+
+let parse_prop_option_id = function(complex_prop_option_id: string): string[] {
+	console.log("complex_prop_option_id", complex_prop_option_id)
+	let cut_prop_option_id: string[] = []
+	let prop_option_id: string = ""
+	let i = 0
+	while (i < complex_prop_option_id.length) {
+		if (complex_prop_option_id[i] === ",") {
+			if (prop_option_id.length > 0) {
+				cut_prop_option_id.push(prop_option_id)
+				console.log("1", cut_prop_option_id)
+			}
+			prop_option_id = ""
+			console.log("2", cut_prop_option_id)
+			i++
+		}
+		prop_option_id += complex_prop_option_id[i]
+		i++
+	}
+	if (prop_option_id.length > 0) {
+		cut_prop_option_id.push(prop_option_id)
+	}
+	return cut_prop_option_id
+}
+
+let toogle_layers = function(props_titles_keys: string[], layers_to_show: L.LayerGroup<any>, layer_collections: any) {
+	// console.log("Hello")
+	// console.log(input.id)
+	// const prop_id = (input.parentElement as HTMLFormElement).id
+	// let layers_to_show: L.Layer[] = []
+	layers_to_show.clearLayers()
+	let layers_to_hide = L.layerGroup()
+	props_titles_keys.forEach((prop_id: string) => {
+		console.log("prop_id", prop_id)
+		if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+			let all_layers = L.layerGroup()
+			let ok_layers = L.layerGroup()
+			Object.keys(layer_collections[prop_id]).forEach((prop_option_id: string) => {
+				console.log("prop_option_id", prop_option_id)
+
+				const input = document.getElementById("option_input-" + prop_id + "-" + prop_option_id) as HTMLInputElement
+				console.log("input", input)
+
+				const options_layers = layer_collections[prop_id][prop_option_id]
+				options_layers.eachLayer((layer: L.Layer) => {
+					console.log("layer", layer)
+					all_layers.addLayer(layer)
+					if (input.checked === true) {
+						console.log("found!!")
+						ok_layers.addLayer(layer)
+						// if (!layers_to_show.hasLayer(layer)) {
+						// 	console.log("schon")
+						// 	layers_to_show.addLayer(layer)
+						// }
+					}
+				})
+			})
+			console.log("all_layers", all_layers)
+			console.log("ok_layers", ok_layers)
+			all_layers.eachLayer((layer: L.Layer) => {
+				layers_to_show.addLayer(layer)
+				if (ok_layers.hasLayer(layer) === false) {
+					layers_to_hide.addLayer(layer)
+				}
+			})
+			console.log("layers_to_hide", layers_to_hide)
+		}
+	})
+	layers_to_hide.eachLayer((layer: L.Layer) => {
+		layers_to_show.removeLayer(layer)
+	})
+	// const layers = layers_to_show.getLayers()
+	// layers.forEach((layer: L.Layer) => {
+	// 	alert("Coin")
+	// })
 }
 
 let load_map = async function(): Promise<void> {
@@ -58,8 +137,92 @@ let load_map = async function(): Promise<void> {
 
 	await axios.get(`/?api/carto/ruzip`)
 
-	let fields = L.layerGroup()
-	geojson_form.features.forEach(async (feature: { id: string | number; properties: any }) => {
+	const props_titles_keys = Object.keys(props_titles)
+
+	let layers_to_show = L.layerGroup()
+	let layer_collections: any = {}
+
+	// // let groups: any = {}
+	props_titles_keys.forEach((prop_id: string) => {
+		console.log("prop_id", prop_id)
+		if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+			// let key_group: any = {}
+			// const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
+			// console.log("prop_options_i", prop_options_i)
+			//const prop_options = form_bazarlist[prop_options_i]["options"]
+			// Object.keys(prop_options).forEach((prop_value: string) => {
+			// 	overlayMaps[prop_value] = key_group
+			// })
+			// groups[key] = L.layerGroup()
+			// console.log(overlayMaps)
+
+			const filters_divs = document.getElementById("filters") as HTMLDivElement;
+
+			const filter_div = document.createElement("div")
+			filter_div.id = "filter_div-" + prop_id
+
+			const prop_button = document.createElement("button")
+			prop_button.id = "prop_button-" + prop_id
+			prop_button.innerText = props_titles[prop_id]
+			prop_button.addEventListener('click', function(this: HTMLButtonElement) {
+				const form_div = document.getElementById("form_div-" + prop_id) as HTMLDivElement
+				if (form_div.style.display === "none") {
+					form_div.style.display = "block"
+				} else {
+					form_div.style.display = "none"
+				}
+			}, false);
+			filter_div.appendChild(prop_button);
+
+			const div_br = document.createElement("br")
+			filter_div.appendChild(div_br);
+
+			const form_div = document.createElement("div")
+			form_div.id = "form_div-" + prop_id
+			form_div.className = "dropdown-content"
+
+			const prop_form = document.createElement("form")
+			prop_form.id = prop_id
+
+			const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
+			const prop_options = form_bazarlist[prop_options_i]["options"]
+			console.log("prop_options", prop_options)
+			let prop_layer_collection: any = {}
+			Object.keys(prop_options).forEach((prop_option_id: string) => {
+				const option_input = document.createElement("input")
+				option_input.type = "checkbox"
+				option_input.id = "option_input-" + prop_id + "-" + prop_option_id
+				option_input.checked = true
+				// input.addEventListener('onchange', function(checkbox: HTMLInputElement, layers_to_show: L.LayerGroup<any>) {
+					option_input.addEventListener('change', function(this: HTMLInputElement) {
+						toogle_layers(props_titles_keys, layers_to_show, layer_collections)
+					}, false);
+					// input.onclick = toogle_layers.bind(this, layers_to_show)
+					prop_form.appendChild(option_input);
+
+					const option_label = document.createElement("label")
+					option_label.htmlFor = "option_input-" + prop_id + "-" + prop_option_id
+					option_label.innerText = prop_options[prop_option_id]
+				prop_form.appendChild(option_label);
+
+				const form_br = document.createElement("br")
+				prop_form.appendChild(form_br);
+
+				form_div.appendChild(prop_form)
+
+				prop_layer_collection[prop_option_id] = L.layerGroup()
+			})
+			filter_div.appendChild(form_div)
+
+			filters_divs.appendChild(filter_div)
+
+			layer_collections[prop_id] = prop_layer_collection
+		}
+	})
+
+	console.log("=============================================== Geometry")
+
+	await geojson_form.features.forEach(async (feature: { id: string | number; properties: any }) => {
 		const zipshp_filename = feature["properties"]["fichiershp_file"]
 		console.log("window.location.href", window.location.href)
 		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
@@ -73,36 +236,57 @@ let load_map = async function(): Promise<void> {
 		const geojson_layer = new L.GeoJSON(geojson)
 
 		let popup_text = ""
-		const props_titles_keys = Object.keys(props_titles)
 		popup_text += `<h1>${feature["properties"]["bf_nomfiche"]}</h1>`
-		props_titles_keys.forEach((key: string) => {
-			popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[key]}</b><br>`
-			if (feature["properties"][key] === "") {
-				popup_text += "Champ non renseigné"
+		props_titles_keys.forEach((prop_id: string) => {
+			console.log("=== prop_id", prop_id)
+			popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[prop_id]}</b><br>`
+
+			const prop_option_id = feature["properties"][prop_id]
+			if (prop_id === "url") {
+				popup_text += `<a href=${prop_option_id}>${prop_option_id}</a>`
 			} else {
-				if (key === "url") {
-					popup_text += `<a href=${feature["properties"][key]}>${feature["properties"][key]}</a>`
-				} else if (key.substring(0, 10) === "radioListe" || key.substring(0, 13) === "checkboxListe") {
-					const column_key = find_column_key(form_bazarlist, key)
-					// console.log("column_key", column_key)
-					popup_text += form_bazarlist[column_key]["options"][feature["properties"][key]]
+				if (prop_option_id === "") {
+					popup_text += "Champ non renseigné"
+					console.log("Champ non renseigné")
 				} else {
-					popup_text += feature["properties"][key]
+					if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+						const cut_prop_option_id = parse_prop_option_id(prop_option_id) // complex_prop_option_id contains multiple prop_option_id separated by commas ","
+						console.log("cut_prop_option_id", cut_prop_option_id)
+						cut_prop_option_id.forEach((prop_option_id: string) => {
+							const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
+							// console.log("column_key", column_key)
+							popup_text += form_bazarlist[prop_options_i]["options"][prop_option_id] + " / "
+							// console.log("overlayMaps[key]", overlayMaps[prop])
+							// console.log(`overlayMaps[key][feature["properties"][key]]`, overlayMaps[prop][feature["properties"][prop]])
+							// overlayMaps[prop_id][prop_option_id].addLayer(geojson_layer);
+							console.log("layer_collections", layer_collections)
+							console.log("prop_id", prop_id)
+							console.log("layer_collections[prop_id]", layer_collections[prop_id])
+							console.log("prop_option_id", prop_option_id)
+							layer_collections[prop_id][prop_option_id].addLayer(geojson_layer)
+						})
+						popup_text = popup_text.substring(0, popup_text.length-3) // Remove last " / "
+					} else {
+							popup_text += prop_option_id
+					}
 				}
 			}
 			popup_text += "</p>"
 		})
 		geojson_layer.bindPopup(popup_text, { maxHeight: 400 });
-		fields.addLayer(geojson_layer);
+		layers_to_show.addLayer(geojson_layer)
+		console.log("------------------ layer_collections:", layer_collections)
 	});
-	fields.addTo(lmap);
+	// console.log(overlayMaps)
+	console.log("layer_collections:", layer_collections)
 
 	const baseMaps = {
 		"OpenStreetMap": osm
 	};
-	const overlayMaps = {
-		"Parcellaires": fields
+	let overlayMaps = {
+		"Parcellaires": layers_to_show
 	};
+
 	L.control.layers(baseMaps, overlayMaps).addTo(lmap);
 }
 
