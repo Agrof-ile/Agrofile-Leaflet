@@ -41,7 +41,7 @@ let parse_prop_option_id = function(complex_prop_option_id: string): string[] {
 	return cut_prop_option_id
 }
 
-let toogle_layers = function(props_titles_keys: string[], layers_to_show: L.LayerGroup<any>, layer_collections: any) {
+let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_show: L.LayerGroup<any>, layer_collections: any) {
 	// console.log("Hello")
 	// console.log(input.id)
 	// const prop_id = (input.parentElement as HTMLFormElement).id
@@ -93,6 +93,85 @@ let toogle_layers = function(props_titles_keys: string[], layers_to_show: L.Laye
 	// })
 }
 
+let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_titles_keys: string[], props_titles: any, form_bazarlist: any, layer_collections: any) {
+	let popup_text = ""
+	popup_text += `<h1>${feature["properties"]["bf_nomfiche"]}</h1>`
+	props_titles_keys.forEach((prop_id: string) => {
+		console.log("=== prop_id", prop_id)
+		popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[prop_id]}</b><br>`
+
+		const prop_option_id = feature["properties"][prop_id]
+		if (prop_id === "url") {
+			popup_text += `<a href=${prop_option_id}>${prop_option_id}</a>`
+		} else {
+			if (prop_option_id === "") {
+				popup_text += "Champ non renseigné"
+				console.log("Champ non renseigné")
+			} else {
+				if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+					const cut_prop_option_id = parse_prop_option_id(prop_option_id) // complex_prop_option_id contains multiple prop_option_id separated by commas ","
+					console.log("cut_prop_option_id", cut_prop_option_id)
+					cut_prop_option_id.forEach((prop_option_id: string) => {
+						const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
+						// console.log("column_key", column_key)
+						popup_text += form_bazarlist[prop_options_i]["options"][prop_option_id] + " / "
+						// console.log("overlayMaps[key]", overlayMaps[prop])
+						// console.log(`overlayMaps[key][feature["properties"][key]]`, overlayMaps[prop][feature["properties"][prop]])
+						// overlayMaps[prop_id][prop_option_id].addLayer(geojson_layer);
+						console.log("layer_collections", layer_collections)
+						console.log("prop_id", prop_id)
+						console.log("layer_collections[prop_id]", layer_collections[prop_id])
+						console.log("prop_option_id", prop_option_id)
+						layer_collections[prop_id][prop_option_id].addLayer(geojson_layer)
+					})
+					popup_text = popup_text.substring(0, popup_text.length-3) // Remove last " / "
+				} else {
+						popup_text += prop_option_id
+				}
+			}
+		}
+		popup_text += "</p>"
+	})
+	geojson_layer.bindPopup(popup_text, { maxHeight: 400 });
+}
+
+let load_geometries = async function(geojson_form: any, props_titles_keys: string[], props_titles: any, form_bazarlist: any, layer_collections: any, layers_to_show: L.LayerGroup<any>, ) {
+	layers_to_show.clearLayers()
+	await geojson_form.features.forEach(async (form_feature: { id: string | number; properties: any }) => {
+		const zipshp_filename = form_feature["properties"]["fichiershp_file"]
+		console.log("window.location.href", window.location.href)
+		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
+		const origin_path = window.location.origin
+		const path_to_shp = `${origin_path}/files/${zipshp_filename}`
+		console.log("path_to_shp_zipendno", path_to_shp)
+		const path_to_shp_zipendok = path_to_shp.substring(0, path_to_shp.length-1)
+		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
+		const geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
+		console.log("geojson", geojson)
+
+		geojson.features.forEach((geom_feature: any) => {
+			geom_feature["properties"] = form_feature["properties"]
+		})
+		console.log("geojson", geojson)
+
+		let rangeMin = Number((document.getElementById("min_input") as HTMLInputElement).value);
+		let rangeMax = Number((document.getElementById("max_input") as HTMLInputElement).value);
+		const geojson_layer = new L.GeoJSON(geojson, {
+			onEachFeature:
+				function(feature: any, layer: L.Layer) {
+					set_popup_content(feature, layer, props_titles_keys, props_titles, form_bazarlist, layer_collections)
+				},
+			filter:
+				function(feature) {
+					return (feature.properties["surface_numerique"] <= rangeMax) && (feature.properties["surface_numerique"] >= rangeMin);
+				}
+		})
+
+		layers_to_show.addLayer(geojson_layer)
+		console.log("------------------ layer_collections:", layer_collections)
+	});
+}
+
 let load_map = async function(): Promise<void> {
 	let lmap = L.map('map', {
 		center: [48.73562156552866, 2.52116218332756],
@@ -142,6 +221,8 @@ let load_map = async function(): Promise<void> {
 	let layers_to_show = L.layerGroup()
 	let layer_collections: any = {}
 
+	const filters_divs = document.getElementById("filters") as HTMLDivElement;
+
 	// // let groups: any = {}
 	props_titles_keys.forEach((prop_id: string) => {
 		console.log("prop_id", prop_id)
@@ -155,8 +236,6 @@ let load_map = async function(): Promise<void> {
 			// })
 			// groups[key] = L.layerGroup()
 			// console.log(overlayMaps)
-
-			const filters_divs = document.getElementById("filters") as HTMLDivElement;
 
 			const filter_div = document.createElement("div")
 			filter_div.id = "filter_div-" + prop_id
@@ -195,7 +274,7 @@ let load_map = async function(): Promise<void> {
 				option_input.checked = true
 				// input.addEventListener('onchange', function(checkbox: HTMLInputElement, layers_to_show: L.LayerGroup<any>) {
 					option_input.addEventListener('change', function(this: HTMLInputElement) {
-						toogle_layers(props_titles_keys, layers_to_show, layer_collections)
+						checkboxes_toogle_layers(props_titles_keys, layers_to_show, layer_collections)
 					}, false);
 					// input.onclick = toogle_layers.bind(this, layers_to_show)
 					prop_form.appendChild(option_input);
@@ -220,63 +299,67 @@ let load_map = async function(): Promise<void> {
 		}
 	})
 
+	const surface_div = document.createElement("div")
+	// surface_slider_div.className = "noUiSlider"
+
+	// noUiSlider.create(surface_slider_div, {
+	// 	start: [0, 500],
+	// 	connect: true,
+	// 	range: {
+	// 		'min': 0,
+	// 		'max': 500
+	// 	}
+	// });
+	// filters_divs.appendChild(surface_slider_div)
+
+	// const slider_value_span = document.createElement("span")
+	// filters_divs.appendChild(slider_value_span)
+
+	// surface_slider_div.noUiSlider.on('update', function (values: any, handle: any) {
+	// 	slider_value_span.innerHTML = values[handle];
+	// });
+
+
+	const surface_br_1 = document.createElement("br")
+	surface_div.appendChild(surface_br_1)
+
+	const surface_span = document.createElement("span")
+	surface_span.innerHTML = "Surface du parcellaire (ha)"
+	surface_div.appendChild(surface_span)
+
+	const surface_br_2 = document.createElement("br")
+	surface_div.appendChild(surface_br_2)
+
+	const min_label = document.createElement("label")
+	min_label.htmlFor = "min_input"
+	surface_div.appendChild(min_label)
+	const min_input = document.createElement("input")
+	min_input.type = "number"
+	min_input.id = "min_input"
+	min_input.value = "0"
+	min_input.addEventListener('change', function(this: HTMLInputElement) {
+		load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
+	}, false)
+	surface_div.appendChild(min_input)
+
+	const max_label = document.createElement("label")
+	max_label.htmlFor = "max_input"
+	surface_div.appendChild(max_label)
+	const max_input = document.createElement("input")
+	max_input.id = "max_input"
+	max_input.type = "number"
+	max_input.value = "500"
+	max_input.addEventListener('change', function(this: HTMLInputElement) {
+		load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
+	}, false)
+	surface_div.appendChild(max_input)
+
+	filters_divs.appendChild(surface_div)
+
 	console.log("=============================================== Geometry")
 
-	await geojson_form.features.forEach(async (feature: { id: string | number; properties: any }) => {
-		const zipshp_filename = feature["properties"]["fichiershp_file"]
-		console.log("window.location.href", window.location.href)
-		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
-		const origin_path = window.location.origin
-		const path_to_shp = `${origin_path}/files/${zipshp_filename}`
-		console.log("path_to_shp_zipendno", path_to_shp)
-		const path_to_shp_zipendok = path_to_shp.substring(0, path_to_shp.length-1)
-		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
-		const geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
-		console.log("geojson", geojson)
-		const geojson_layer = new L.GeoJSON(geojson)
+	load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
 
-		let popup_text = ""
-		popup_text += `<h1>${feature["properties"]["bf_nomfiche"]}</h1>`
-		props_titles_keys.forEach((prop_id: string) => {
-			console.log("=== prop_id", prop_id)
-			popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[prop_id]}</b><br>`
-
-			const prop_option_id = feature["properties"][prop_id]
-			if (prop_id === "url") {
-				popup_text += `<a href=${prop_option_id}>${prop_option_id}</a>`
-			} else {
-				if (prop_option_id === "") {
-					popup_text += "Champ non renseigné"
-					console.log("Champ non renseigné")
-				} else {
-					if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
-						const cut_prop_option_id = parse_prop_option_id(prop_option_id) // complex_prop_option_id contains multiple prop_option_id separated by commas ","
-						console.log("cut_prop_option_id", cut_prop_option_id)
-						cut_prop_option_id.forEach((prop_option_id: string) => {
-							const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
-							// console.log("column_key", column_key)
-							popup_text += form_bazarlist[prop_options_i]["options"][prop_option_id] + " / "
-							// console.log("overlayMaps[key]", overlayMaps[prop])
-							// console.log(`overlayMaps[key][feature["properties"][key]]`, overlayMaps[prop][feature["properties"][prop]])
-							// overlayMaps[prop_id][prop_option_id].addLayer(geojson_layer);
-							console.log("layer_collections", layer_collections)
-							console.log("prop_id", prop_id)
-							console.log("layer_collections[prop_id]", layer_collections[prop_id])
-							console.log("prop_option_id", prop_option_id)
-							layer_collections[prop_id][prop_option_id].addLayer(geojson_layer)
-						})
-						popup_text = popup_text.substring(0, popup_text.length-3) // Remove last " / "
-					} else {
-							popup_text += prop_option_id
-					}
-				}
-			}
-			popup_text += "</p>"
-		})
-		geojson_layer.bindPopup(popup_text, { maxHeight: 400 });
-		layers_to_show.addLayer(geojson_layer)
-		console.log("------------------ layer_collections:", layer_collections)
-	});
 	// console.log(overlayMaps)
 	console.log("layer_collections:", layer_collections)
 
