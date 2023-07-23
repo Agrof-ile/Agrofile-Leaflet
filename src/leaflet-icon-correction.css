@@ -1,0 +1,14 @@
+
+.leaflet-control-layers-toggle {
+	background-image: url(https://unpkg.com/leaflet@1.7.1/dist/images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(https://unpkg.com/leaflet@1.7.1/dist/images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png);
+	}

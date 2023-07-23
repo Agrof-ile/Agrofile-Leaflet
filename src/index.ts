@@ -1,24 +1,25 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "./leaflet-icon-correction.css";
 import shp from "shpjs";
 import axios from "axios";
 
 let find_prop_options_i = function(columns: any[], prop_id: string): any {
-	console.log("columns", columns)
-	console.log("prop_id", prop_id)
+	// console.log("columns", columns)
+	// console.log("prop_id", prop_id)
 	const keys: any[] = Object.keys(columns)
 	for (let i = 0; i < keys.length; i++) {
 		if (columns[keys[i]]["id"] === prop_id) {
-			console.log("found")
+			// console.log("found")
 			return keys[i]
 		}
 	}
-	console.log("wtf")
+	// console.log("wtf")
 	return undefined
 }
 
 let parse_prop_option_id = function(complex_prop_option_id: string): string[] {
-	console.log("complex_prop_option_id", complex_prop_option_id)
+	// console.log("complex_prop_option_id", complex_prop_option_id)
 	let cut_prop_option_id: string[] = []
 	let prop_option_id: string = ""
 	let i = 0
@@ -26,10 +27,10 @@ let parse_prop_option_id = function(complex_prop_option_id: string): string[] {
 		if (complex_prop_option_id[i] === ",") {
 			if (prop_option_id.length > 0) {
 				cut_prop_option_id.push(prop_option_id)
-				console.log("1", cut_prop_option_id)
+				// console.log("1", cut_prop_option_id)
 			}
 			prop_option_id = ""
-			console.log("2", cut_prop_option_id)
+			// console.log("2", cut_prop_option_id)
 			i++
 		}
 		prop_option_id += complex_prop_option_id[i]
@@ -49,19 +50,19 @@ let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_s
 	layers_to_show.clearLayers()
 	let layers_to_hide = L.layerGroup()
 	props_titles_keys.forEach((prop_id: string) => {
-		console.log("prop_id", prop_id)
+		// console.log("prop_id", prop_id)
 		if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
 			let all_layers = L.layerGroup()
 			let ok_layers = L.layerGroup()
 			Object.keys(layer_collections[prop_id]).forEach((prop_option_id: string) => {
-				console.log("prop_option_id", prop_option_id)
+				// console.log("prop_option_id", prop_option_id)
 
 				const input = document.getElementById("option_input-" + prop_id + "-" + prop_option_id) as HTMLInputElement
-				console.log("input", input)
+				// console.log("input", input)
 
 				const options_layers = layer_collections[prop_id][prop_option_id]
 				options_layers.eachLayer((layer: L.Layer) => {
-					console.log("layer", layer)
+					// console.log("layer", layer)
 					all_layers.addLayer(layer)
 					if (input.checked === true) {
 						console.log("found!!")
@@ -73,15 +74,15 @@ let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_s
 					}
 				})
 			})
-			console.log("all_layers", all_layers)
-			console.log("ok_layers", ok_layers)
+			// console.log("all_layers", all_layers)
+			// console.log("ok_layers", ok_layers)
 			all_layers.eachLayer((layer: L.Layer) => {
 				layers_to_show.addLayer(layer)
 				if (ok_layers.hasLayer(layer) === false) {
 					layers_to_hide.addLayer(layer)
 				}
 			})
-			console.log("layers_to_hide", layers_to_hide)
+			// console.log("layers_to_hide", layers_to_hide)
 		}
 	})
 	layers_to_hide.eachLayer((layer: L.Layer) => {
@@ -97,7 +98,7 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 	let popup_text = ""
 	popup_text += `<h1>${feature["properties"]["bf_nomfiche"]}</h1>`
 	props_titles_keys.forEach((prop_id: string) => {
-		console.log("=== prop_id", prop_id)
+		// console.log("=== prop_id", prop_id)
 		popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[prop_id]}</b><br>`
 
 		const prop_option_id = feature["properties"][prop_id]
@@ -110,7 +111,7 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 			} else {
 				if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
 					const cut_prop_option_id = parse_prop_option_id(prop_option_id) // complex_prop_option_id contains multiple prop_option_id separated by commas ","
-					console.log("cut_prop_option_id", cut_prop_option_id)
+					// console.log("cut_prop_option_id", cut_prop_option_id)
 					cut_prop_option_id.forEach((prop_option_id: string) => {
 						const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
 						// console.log("column_key", column_key)
@@ -118,10 +119,10 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 						// console.log("overlayMaps[key]", overlayMaps[prop])
 						// console.log(`overlayMaps[key][feature["properties"][key]]`, overlayMaps[prop][feature["properties"][prop]])
 						// overlayMaps[prop_id][prop_option_id].addLayer(geojson_layer);
-						console.log("layer_collections", layer_collections)
-						console.log("prop_id", prop_id)
-						console.log("layer_collections[prop_id]", layer_collections[prop_id])
-						console.log("prop_option_id", prop_option_id)
+						// console.log("layer_collections", layer_collections)
+						// console.log("prop_id", prop_id)
+						// console.log("layer_collections[prop_id]", layer_collections[prop_id])
+						// console.log("prop_option_id", prop_option_id)
 						layer_collections[prop_id][prop_option_id].addLayer(geojson_layer)
 					})
 					popup_text = popup_text.substring(0, popup_text.length-3) // Remove last " / "
@@ -135,6 +136,34 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 	geojson_layer.bindPopup(popup_text, { maxHeight: 400 });
 }
 
+let get_mean_coords = function(polygon_geojson_features: any): Array<number> {
+	let mean_coords = [0, 0]
+	let point_count = 0
+	polygon_geojson_features.forEach((feature: any) => {
+		feature["geometry"]["coordinates"].forEach((polygon_coordinates: Array<Array<number>>) => {
+			polygon_coordinates.forEach((polygon_point_coordinates: Array<number>) => {
+				mean_coords[0] += polygon_point_coordinates[0]
+				mean_coords[1] += polygon_point_coordinates[1]
+				point_count++
+			})
+		})
+	});
+	mean_coords[0] /= point_count
+	mean_coords[1] /= point_count
+	console.log(mean_coords)
+	return mean_coords
+}
+
+let get_type_of_land_color = function(type_of_land: string): string {
+	const type_of_land_to_color: any = {
+		"parcelle_cultivee": "#f8c423",
+		"espace_vert": "#6fa8dc",
+		"espace_naturel": "#62c637",
+		"autre": "#165c6b"
+	}
+	return type_of_land_to_color[type_of_land]
+}
+
 let load_geometries = async function(geojson_form: any, props_titles_keys: string[], props_titles: any, form_bazarlist: any, layer_collections: any, layers_to_show: L.LayerGroup<any>, ) {
 	layers_to_show.clearLayers()
 	await geojson_form.features.forEach(async (form_feature: { id: string | number; properties: any }) => {
@@ -146,29 +175,74 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		console.log("path_to_shp_zipendno", path_to_shp)
 		const path_to_shp_zipendok = path_to_shp.substring(0, path_to_shp.length-1)
 		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
-		const geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
-		console.log("geojson", geojson)
+		const polygon_geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
+		console.log("polygon_geojson", polygon_geojson)
 
-		geojson.features.forEach((geom_feature: any) => {
+		polygon_geojson.features.forEach((geom_feature: any) => {
 			geom_feature["properties"] = form_feature["properties"]
 		})
-		console.log("geojson", geojson)
+		console.log("polygon_geojson", polygon_geojson)
 
 		let rangeMin = Number((document.getElementById("min_input") as HTMLInputElement).value);
 		let rangeMax = Number((document.getElementById("max_input") as HTMLInputElement).value);
-		const geojson_layer = new L.GeoJSON(geojson, {
+		const geojson_layer = new L.GeoJSON(polygon_geojson, {
+			style:
+				function (geoJsonFeature: any) {
+					return {
+						"fillColor": get_type_of_land_color(geoJsonFeature["properties"]["radioListeListetypetype_foncier"]),
+						"color": "#000",
+						"weight": 1,
+						"opacity": 1,
+						"fillOpacity": 0.8
+					}
+				},
 			onEachFeature:
 				function(feature: any, layer: L.Layer) {
 					set_popup_content(feature, layer, props_titles_keys, props_titles, form_bazarlist, layer_collections)
 				},
 			filter:
-				function(feature) {
+				function(feature: any) {
 					return (feature.properties["surface_numerique"] <= rangeMax) && (feature.properties["surface_numerique"] >= rangeMin);
 				}
 		})
 
 		layers_to_show.addLayer(geojson_layer)
-		console.log("------------------ layer_collections:", layer_collections)
+
+		const point_geojson = {
+			"type": "Feature",
+			"geometry": {
+				"type": "Point",
+				"coordinates": get_mean_coords(polygon_geojson.features)
+			},
+			"properties": form_feature["properties"]
+		} as any
+
+		const geojsonMarkerOptions = {
+			radius: 15,
+			fillColor: get_type_of_land_color(point_geojson["properties"]["radioListeListetypetype_foncier"]),
+			color: "#000",
+			weight: 1,
+			opacity: 1,
+			fillOpacity: 0.8
+		};
+		const point_geojson_layer = new L.GeoJSON(point_geojson, {
+			onEachFeature:
+				function(feature: any, layer: L.Layer) {
+					set_popup_content(feature, layer, props_titles_keys, props_titles, form_bazarlist, layer_collections)
+				},
+			filter:
+				function(feature: any) {
+					return (feature.properties["surface_numerique"] <= rangeMax) && (feature.properties["surface_numerique"] >= rangeMin);
+				},
+			pointToLayer:
+				function (feature: any, latlng: L.LatLng) {
+					return L.circleMarker(latlng, geojsonMarkerOptions);
+				}
+		})
+
+		layers_to_show.addLayer(point_geojson_layer)
+
+		// console.log("------------------ layer_collections:", layer_collections)
 	});
 }
 
@@ -225,7 +299,7 @@ let load_map = async function(): Promise<void> {
 
 	// // let groups: any = {}
 	props_titles_keys.forEach((prop_id: string) => {
-		console.log("prop_id", prop_id)
+		// console.log("prop_id", prop_id)
 		if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
 			// let key_group: any = {}
 			// const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
@@ -265,7 +339,7 @@ let load_map = async function(): Promise<void> {
 
 			const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
 			const prop_options = form_bazarlist[prop_options_i]["options"]
-			console.log("prop_options", prop_options)
+			// console.log("prop_options", prop_options)
 			let prop_layer_collection: any = {}
 			Object.keys(prop_options).forEach((prop_option_id: string) => {
 				const option_input = document.createElement("input")
@@ -359,6 +433,8 @@ let load_map = async function(): Promise<void> {
 	console.log("=============================================== Geometry")
 
 	load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
+
+	layers_to_show.addTo(lmap)
 
 	// console.log(overlayMaps)
 	console.log("layer_collections:", layer_collections)
