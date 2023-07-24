@@ -94,9 +94,10 @@ let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_s
 	// })
 }
 
-let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_titles_keys: string[], props_titles: any, form_bazarlist: any, layer_collections: any) {
+let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_titles_keys: string[], props_titles: any, props_ids: any, form_bazarlist: any, layer_collections: any) {
 	let popup_text = ""
-	popup_text += `<h1>${feature["properties"]["bf_nomfiche"]}</h1>`
+	const card_prop_id = props_ids["card_name"]
+	popup_text += `<h1>${feature["properties"][card_prop_id]}</h1>`
 	props_titles_keys.forEach((prop_id: string) => {
 		// console.log("=== prop_id", prop_id)
 		popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[prop_id]}</b><br>`
@@ -164,10 +165,11 @@ let get_type_of_land_color = function(type_of_land: string): string {
 	return type_of_land_to_color[type_of_land]
 }
 
-let load_geometries = async function(geojson_form: any, props_titles_keys: string[], props_titles: any, form_bazarlist: any, layer_collections: any, layers_to_show: L.LayerGroup<any>, ) {
+let load_geometries = async function(geojson_form: any, props_titles_keys: string[], props_titles: any, props_ids: any, form_bazarlist: any, layer_collections: any, layers_to_show: L.LayerGroup<any>, ) {
 	layers_to_show.clearLayers()
 	await geojson_form.features.forEach(async (form_feature: { id: string | number; properties: any }) => {
-		const zipshp_filename = form_feature["properties"]["fichiershp_file"]
+		const shp_file_prop_id = props_ids["shp_file"]
+		const zipshp_filename = form_feature["properties"]["fichier" + shp_file_prop_id]
 		console.log("window.location.href", window.location.href)
 		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
 		const origin_path = window.location.origin
@@ -185,11 +187,15 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 
 		let rangeMin = Number((document.getElementById("min_input") as HTMLInputElement).value);
 		let rangeMax = Number((document.getElementById("max_input") as HTMLInputElement).value);
+		const area_prop_id = props_ids["area"]
+		const type_of_land_list_id = props_ids["type_of_land"]["list_id"]
+		const type_of_land_prop_id = props_ids["type_of_land"]["prop_id"]
+		const type_of_land_options_ids = props_ids["type_of_land"]["options_ids"]
 		const geojson_layer = new L.GeoJSON(polygon_geojson, {
 			style:
 				function (geoJsonFeature: any) {
 					return {
-						"fillColor": get_type_of_land_color(geoJsonFeature["properties"]["radioListeListetypetype_foncier"]),
+						"fillColor": type_of_land_options_ids[geoJsonFeature["properties"]["radioListe" + type_of_land_list_id + type_of_land_prop_id]],
 						"color": "#000",
 						"weight": 1,
 						"opacity": 1,
@@ -198,11 +204,11 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 				},
 			onEachFeature:
 				function(feature: any, layer: L.Layer) {
-					set_popup_content(feature, layer, props_titles_keys, props_titles, form_bazarlist, layer_collections)
+					set_popup_content(feature, layer, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections)
 				},
 			filter:
 				function(feature: any) {
-					return (feature.properties["surface_numerique"] <= rangeMax) && (feature.properties["surface_numerique"] >= rangeMin);
+					return (feature.properties[area_prop_id] <= rangeMax) && (feature.properties[area_prop_id] >= rangeMin);
 				}
 		})
 
@@ -217,25 +223,25 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 			"properties": form_feature["properties"]
 		} as any
 
-		const geojsonMarkerOptions = {
-			radius: 15,
-			fillColor: get_type_of_land_color(point_geojson["properties"]["radioListeListetypetype_foncier"]),
-			color: "#000",
-			weight: 1,
-			opacity: 1,
-			fillOpacity: 0.8
-		};
 		const point_geojson_layer = new L.GeoJSON(point_geojson, {
 			onEachFeature:
 				function(feature: any, layer: L.Layer) {
-					set_popup_content(feature, layer, props_titles_keys, props_titles, form_bazarlist, layer_collections)
+					set_popup_content(feature, layer, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections)
 				},
 			filter:
 				function(feature: any) {
-					return (feature.properties["surface_numerique"] <= rangeMax) && (feature.properties["surface_numerique"] >= rangeMin);
+					return (feature.properties[area_prop_id] <= rangeMax) && (feature.properties[area_prop_id] >= rangeMin);
 				},
 			pointToLayer:
 				function (feature: any, latlng: L.LatLng) {
+					const geojsonMarkerOptions = {
+						radius: 15,
+						fillColor: type_of_land_options_ids[feature["properties"]["radioListe" + type_of_land_list_id + type_of_land_prop_id]],
+						color: "#000",
+						weight: 1,
+						opacity: 1,
+						fillOpacity: 0.8
+					};
 					return L.circleMarker(latlng, geojsonMarkerOptions);
 				}
 		})
@@ -272,6 +278,9 @@ let load_map = async function(): Promise<void> {
 
 	const props_titles = (await axios.get(`/?api/carto/props_titles`)).data
 	console.log("props_titles:", props_titles)
+
+	const props_ids = (await axios.get(`/?api/carto/props_ids`)).data
+	console.log("props_ids:", props_ids)
 
 	const bazarliste_values_map = (await axios.get(`/?api/entries/bazarlist`)).data
 	console.log("bazarliste_values_map:", bazarliste_values_map)
@@ -373,10 +382,10 @@ let load_map = async function(): Promise<void> {
 		}
 	})
 
-	const surface_div = document.createElement("div")
+	const area_div = document.createElement("div")
 	// surface_slider_div.className = "noUiSlider"
 
-	// noUiSlider.create(surface_slider_div, {
+	// noUiSlider.create(area_slider_div, {
 	// 	start: [0, 500],
 	// 	connect: true,
 	// 	range: {
@@ -384,55 +393,55 @@ let load_map = async function(): Promise<void> {
 	// 		'max': 500
 	// 	}
 	// });
-	// filters_divs.appendChild(surface_slider_div)
+	// filters_divs.appendChild(area_slider_div)
 
 	// const slider_value_span = document.createElement("span")
 	// filters_divs.appendChild(slider_value_span)
 
-	// surface_slider_div.noUiSlider.on('update', function (values: any, handle: any) {
+	// area_slider_div.noUiSlider.on('update', function (values: any, handle: any) {
 	// 	slider_value_span.innerHTML = values[handle];
 	// });
 
 
-	const surface_br_1 = document.createElement("br")
-	surface_div.appendChild(surface_br_1)
+	const area_br_1 = document.createElement("br")
+	area_div.appendChild(area_br_1)
 
-	const surface_span = document.createElement("span")
-	surface_span.innerHTML = "Surface du parcellaire (ha)"
-	surface_div.appendChild(surface_span)
+	const area_span = document.createElement("span")
+	area_span.innerHTML = "Surface du parcellaire (ha)"
+	area_div.appendChild(area_span)
 
-	const surface_br_2 = document.createElement("br")
-	surface_div.appendChild(surface_br_2)
+	const area_br_2 = document.createElement("br")
+	area_div.appendChild(area_br_2)
 
 	const min_label = document.createElement("label")
 	min_label.htmlFor = "min_input"
-	surface_div.appendChild(min_label)
+	area_div.appendChild(min_label)
 	const min_input = document.createElement("input")
 	min_input.type = "number"
 	min_input.id = "min_input"
 	min_input.value = "0"
 	min_input.addEventListener('change', function(this: HTMLInputElement) {
-		load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
+		load_geometries(geojson_form, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections, layers_to_show)
 	}, false)
-	surface_div.appendChild(min_input)
+	area_div.appendChild(min_input)
 
 	const max_label = document.createElement("label")
 	max_label.htmlFor = "max_input"
-	surface_div.appendChild(max_label)
+	area_div.appendChild(max_label)
 	const max_input = document.createElement("input")
 	max_input.id = "max_input"
 	max_input.type = "number"
 	max_input.value = "500"
 	max_input.addEventListener('change', function(this: HTMLInputElement) {
-		load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
+		load_geometries(geojson_form, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections, layers_to_show)
 	}, false)
-	surface_div.appendChild(max_input)
+	area_div.appendChild(max_input)
 
-	filters_divs.appendChild(surface_div)
+	filters_divs.appendChild(area_div)
 
 	console.log("=============================================== Geometry")
 
-	load_geometries(geojson_form, props_titles_keys, props_titles, form_bazarlist, layer_collections, layers_to_show)
+	load_geometries(geojson_form, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections, layers_to_show)
 
 	layers_to_show.addTo(lmap)
 
