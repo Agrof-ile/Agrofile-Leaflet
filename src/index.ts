@@ -4,7 +4,8 @@ import "./leaflet-icon-correction.css"; // Seems like a bug : Leaflet can't load
 import shp from "shpjs"; // Read SHP as GeoJSON for Leaflet
 import axios from "axios"; // Requests
 
-let find_prop_options_i = function(columns: any[], prop_id: string): any { // Retrieve options ids
+// Retrieve the options ids of the list used for our multiple choice field
+let find_prop_options_i = function(columns: any[], prop_id: string): any {
 	// console.log("columns", columns)
 	// console.log("prop_id", prop_id)
 	const keys: any[] = Object.keys(columns)
@@ -17,7 +18,7 @@ let find_prop_options_i = function(columns: any[], prop_id: string): any { // Re
 	return undefined
 }
 
-// Core filtering function
+// Core filtering function (except for the area)
 let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_show: L.LayerGroup<any>, layer_collections: any): void {
 	// When filtering we have to rebuild the displayed layer group from scratch, thus we clear all displayed layers
 	// At this point, layer_collections has been filled in set_popup_content()
@@ -95,7 +96,8 @@ let parse_prop_option_id = function(complex_prop_option_id: string): string[] {
 	return cut_prop_option_id
 }
 
-let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_titles_keys: string[], props_titles: any, props_ids: any, form_bazarlist: any, layer_collections: any) {
+// Sets a feature's popup content and add the layer to layers_collections[prop_id][prop_option_id] when prop_id is a multiple choice property (useful for further filtering)
+let set_popup_content_layer_collections = function(feature: any, geojson_layer: L.Layer, props_titles_keys: string[], props_titles: any, props_ids: any, form_bazarlist: any, layer_collections: any) {
 	let popup_text = ""
 	const card_prop_id = props_ids["card_name"]
 	popup_text += `<h1>${feature["properties"][card_prop_id]}</h1>`
@@ -109,7 +111,7 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 		} else {
 			if (prop_option_id === "") {
 				popup_text += "Champ non renseigné"
-				console.log("Champ non renseigné")
+				// console.log("Champ non renseigné")
 			} else {
 				if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
 					// Complex_prop_option_id may contain multiple prop_option_id separated by commas "," e.g. "mars,avril,mai"
@@ -117,16 +119,14 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 					const cut_prop_option_id = parse_prop_option_id(prop_option_id)
 					// console.log("cut_prop_option_id", cut_prop_option_id)
 					cut_prop_option_id.forEach((prop_option_id: string) => {
-						const prop_options_i = find_prop_options_i(form_bazarlist, prop_id)
+						const prop_options_i = find_prop_options_i(form_bazarlist, prop_id) // Retrieve the options ids of the list used for our multiple choice field
 						// console.log("column_key", column_key)
 						popup_text += form_bazarlist[prop_options_i]["options"][prop_option_id] + " / "
-						// console.log("overlayMaps[key]", overlayMaps[prop])
-						// console.log(`overlayMaps[key][feature["properties"][key]]`, overlayMaps[prop][feature["properties"][prop]])
-						// overlayMaps[prop_id][prop_option_id].addLayer(geojson_layer);
 						// console.log("layer_collections", layer_collections)
 						// console.log("prop_id", prop_id)
 						// console.log("layer_collections[prop_id]", layer_collections[prop_id])
 						// console.log("prop_option_id", prop_option_id)
+						// Add the layer to layers_collections[prop_id][prop_option_id] when prop_id is a multiple choice property (useful for further filtering)
 						layer_collections[prop_id][prop_option_id].addLayer(geojson_layer)
 					})
 					popup_text = popup_text.substring(0, popup_text.length-3) // Remove last " / "
@@ -140,6 +140,7 @@ let set_popup_content = function(feature: any, geojson_layer: L.Layer, props_tit
 	geojson_layer.bindPopup(popup_text, { maxHeight: 400 });
 }
 
+// Get the mean position of features' geometries' points
 let get_mean_coords = function(polygon_geojson_features: any): Array<number> {
 	let mean_coords = [0, 0]
 	let point_count = 0
@@ -158,25 +159,15 @@ let get_mean_coords = function(polygon_geojson_features: any): Array<number> {
 	return mean_coords
 }
 
-let get_type_of_land_color = function(type_of_land: string): string {
-	const type_of_land_to_color: any = {
-		"parcelle_cultivee": "#f8c423",
-		"espace_vert": "#6fa8dc",
-		"espace_naturel": "#62c637",
-		"autre": "#165c6b"
-	}
-	return type_of_land_to_color[type_of_land]
-}
-
+// Load our geometry and data on Leaflet layers
 let load_geometries = async function(geojson_form: any, props_titles_keys: string[], props_titles: any, props_ids: any, form_bazarlist: any, layer_collections: any, layers_to_show: L.LayerGroup<any>, ) {
 	// When filtering we have to rebuild the displayed layer group from scratch, thus we clear all displayed layers
 	layers_to_show.clearLayers()
 	await geojson_form.features.forEach(async (form_feature: { id: string | number; properties: any }) => {
 		// First, we load the geometry data (SHP file as ZIP)
+		// Its location is in the form answer's properties
 		const shp_file_prop_id = props_ids["shp_file"]
 		const zipshp_filename = form_feature["properties"]["fichier" + shp_file_prop_id]
-		console.log("window.location.href", window.location.href)
-		// let geojson = await shp(`${window.location.href}${zipshp_filename}`) as GeoJSON.FeatureCollection
 		const origin_path = window.location.origin
 		const path_to_shp = `${origin_path}/files/${zipshp_filename}`
 		console.log("path_to_shp_zipendno", path_to_shp)
@@ -185,6 +176,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		// But the file name in our form entry's SHP file property value still contains the underscore, so we cut it.
 		const path_to_shp_zipendok = path_to_shp.substring(0, path_to_shp.length-1)
 		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
+		// Read our SHP ZIP file as GeoJSON (Leaflet can only read GeoJSON)
 		const polygon_geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
 		console.log("polygon_geojson", polygon_geojson)
 
@@ -195,14 +187,17 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		})
 		console.log("polygon_geojson", polygon_geojson)
 
-		let rangeMin = Number((document.getElementById("min_input") as HTMLInputElement).value);
-		let rangeMax = Number((document.getElementById("max_input") as HTMLInputElement).value);
+		let area_range_min = Number((document.getElementById("min_input") as HTMLInputElement).value);
+		let area_range_max = Number((document.getElementById("max_input") as HTMLInputElement).value);
 		const area_prop_id = props_ids["area"]
 		const type_of_land_list_id = props_ids["type_of_land"]["list_id"]
 		const type_of_land_prop_id = props_ids["type_of_land"]["prop_id"]
 		const type_of_land_options_ids = props_ids["type_of_land"]["options_ids"]
+
+		// The Leaflet GeoJSON layer is the object we will display on the map
 		const geojson_layer = new L.GeoJSON(polygon_geojson, {
-			style:
+			// Each of these options will be called for each feature contained in our geometry
+			style: // The layer's appearance
 				function (geoJsonFeature: any) {
 					return {
 						"fillColor": type_of_land_options_ids[geoJsonFeature["properties"]["radioListe" + type_of_land_list_id + type_of_land_prop_id]],
@@ -212,22 +207,27 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 						"fillOpacity": 0.8
 					}
 				},
-			onEachFeature:
+			onEachFeature: // Leaflet lets us call a function for each feature, let's use it to set the popup content'
 				function(feature: any, layer: L.Layer) {
-					set_popup_content(feature, layer, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections)
+					// Set what will be displayed when the user clicks on the geometry on the map
+					// and add the layer to layers_collections[prop_id][prop_option_id] when prop_id is a multiple choice property (useful for further filtering)
+					set_popup_content_layer_collections(feature, layer, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections)
 				},
-			filter:
+			filter: // Select which feature will be displayed based on their properties
 				function(feature: any) {
+					// Here we filter the layers according to their area
 					return (feature.properties[area_prop_id] <= rangeMax) && (feature.properties[area_prop_id] >= rangeMin);
 				}
 		})
 
 		layers_to_show.addLayer(geojson_layer)
 
+		// The following code displays a constant-size marker on the geometry (useful to find a geometry from a small zoom)
 		const point_geojson = {
 			"type": "Feature",
 			"geometry": {
 				"type": "Point",
+				// Set the marker's position to the mean position of the features' geometries' points
 				"coordinates": get_mean_coords(polygon_geojson.features)
 			},
 			"properties": form_feature["properties"]
@@ -236,13 +236,16 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		const point_geojson_layer = new L.GeoJSON(point_geojson, {
 			onEachFeature:
 				function(feature: any, layer: L.Layer) {
-					set_popup_content(feature, layer, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections)
+					// The marker's popup has the same content than the geometry
+					// Set what will be displayed when the user clicks on the geometry on the map
+					// and add the layer to layers_collections[prop_id][prop_option_id] when prop_id is a multiple choice property (useful for further filtering)
+					set_popup_content_layer_collections(feature, layer, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections)
 				},
 			filter:
 				function(feature: any) {
 					return (feature.properties[area_prop_id] <= rangeMax) && (feature.properties[area_prop_id] >= rangeMin);
 				},
-			pointToLayer:
+			pointToLayer: // Equivalent to the geometry's style option
 				function (feature: any, latlng: L.LatLng) {
 					const geojsonMarkerOptions = {
 						radius: 15,
@@ -252,7 +255,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 						opacity: 1,
 						fillOpacity: 0.8
 					};
-					return L.circleMarker(latlng, geojsonMarkerOptions);
+					return L.circleMarker(latlng, geojsonMarkerOptions); // The marker is a circle
 				}
 		})
 
@@ -340,7 +343,7 @@ let load_map = async function(): Promise<void> {
 			const prop_form = document.createElement("form")
 			prop_form.id = prop_id
 
-			const prop_options_i = find_prop_options_i(form_bazarlist, prop_id) // Retrieve options ids
+			const prop_options_i = find_prop_options_i(form_bazarlist, prop_id) // Retrieve the options ids of the list used for our multiple choice field
 			const prop_options = form_bazarlist[prop_options_i]["options"]
 			// console.log("prop_options", prop_options)
 
@@ -352,7 +355,7 @@ let load_map = async function(): Promise<void> {
 				option_input.id = "option_input-" + prop_id + "-" + prop_option_id
 				option_input.checked = true
 					option_input.addEventListener('change', function(this: HTMLInputElement) {
-						checkboxes_toogle_layers(props_titles_keys, layers_to_show, layer_collections) // Core filtering function
+						checkboxes_toogle_layers(props_titles_keys, layers_to_show, layer_collections) // Core filtering function (except for the area)
 					}, false);
 					prop_form.appendChild(option_input);
 
@@ -397,6 +400,7 @@ let load_map = async function(): Promise<void> {
 	min_input.id = "min_input"
 	min_input.value = "0"
 	min_input.addEventListener('change', function(this: HTMLInputElement) {
+		// Reload our geometry and data on Leaflet layers on each time the field is changed
 		load_geometries(geojson_form, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections, layers_to_show)
 	}, false)
 	area_div.appendChild(min_input)
@@ -409,6 +413,7 @@ let load_map = async function(): Promise<void> {
 	max_input.type = "number"
 	max_input.value = "500"
 	max_input.addEventListener('change', function(this: HTMLInputElement) {
+		// Reload our geometry and data on Leaflet layers on each time the field is changed
 		load_geometries(geojson_form, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections, layers_to_show)
 	}, false)
 	area_div.appendChild(max_input)
@@ -417,11 +422,12 @@ let load_map = async function(): Promise<void> {
 
 	console.log("=============================================== Geometry")
 
+	// Load our geometry and data on Leaflet layers
 	load_geometries(geojson_form, props_titles_keys, props_titles, props_ids, form_bazarlist, layer_collections, layers_to_show)
 
+	// Display our group of layers on the map
 	layers_to_show.addTo(lmap)
 
-	// console.log(overlayMaps)
 	console.log("layer_collections:", layer_collections)
 
 	const baseMaps = {
@@ -430,7 +436,9 @@ let load_map = async function(): Promise<void> {
 	let overlayMaps = {
 		"Parcellaires": layers_to_show
 	};
+	// console.log(overlayMaps)
 
+	// Allow the user to switch base map (useless because we have only set an OpenStreetMap base map) and enable/disable our geometries' displaying
 	L.control.layers(baseMaps, overlayMaps).addTo(lmap);
 }
 
