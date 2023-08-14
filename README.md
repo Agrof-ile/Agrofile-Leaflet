@@ -1,6 +1,6 @@
 # Agrofile-Leaflet
 ## Generates javascript bundle for an interactive Leaflet map reading GeoJSON and SHP files on a yeswiki website
-Nicolas LENGLET for Agrof'île - June-July 2023
+Nicolas LENGLET for Agrof'île - June-August 2023
 
 ### How to run this?
 - `git clone git@github.com:Weltskaiser/Agrofile-Leaflet.git`
