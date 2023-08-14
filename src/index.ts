@@ -216,7 +216,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 			filter: // Select which feature will be displayed based on their properties
 				function(feature: any) {
 					// Here we filter the layers according to their area
-					return (feature.properties[area_prop_id] <= rangeMax) && (feature.properties[area_prop_id] >= rangeMin);
+					return (feature.properties[area_prop_id] <= area_range_max) && (feature.properties[area_prop_id] >= area_range_min);
 				}
 		})
 
@@ -243,7 +243,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 				},
 			filter:
 				function(feature: any) {
-					return (feature.properties[area_prop_id] <= rangeMax) && (feature.properties[area_prop_id] >= rangeMin);
+					return (feature.properties[area_prop_id] <= area_range_max) && (feature.properties[area_prop_id] >= area_range_min);
 				},
 			pointToLayer: // Equivalent to the geometry's style option
 				function (feature: any, latlng: L.LatLng) {
@@ -344,6 +344,7 @@ let load_map = async function(): Promise<void> {
 			prop_form.id = prop_id
 
 			const prop_options_i = find_prop_options_i(form_bazarlist, prop_id) // Retrieve the options ids of the list used for our multiple choice field
+			console.log("prop_options_i", prop_options_i)
 			const prop_options = form_bazarlist[prop_options_i]["options"]
 			// console.log("prop_options", prop_options)
 
