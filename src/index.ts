@@ -422,6 +422,7 @@ let load_map = async function(): Promise<void> {
 
 	const min_label = document.createElement("label")
 	min_label.htmlFor = "min_input"
+	min_label.innerHTML = "borne min : "
 	area_div.appendChild(min_label)
 	const min_input = document.createElement("input")
 	min_input.type = "number"
@@ -433,8 +434,12 @@ let load_map = async function(): Promise<void> {
 	}, false)
 	area_div.appendChild(min_input)
 
+	const area_br_3 = document.createElement("br")
+	area_div.appendChild(area_br_3)
+
 	const max_label = document.createElement("label")
 	max_label.htmlFor = "max_input"
+	max_label.innerHTML = "borne max : "
 	area_div.appendChild(max_label)
 	const max_input = document.createElement("input")
 	max_input.id = "max_input"
