@@ -301,8 +301,8 @@ let load_map = async function(): Promise<void> {
 	});
 
 	// Add an OpenStreetMap base layer
-	const osm = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+	const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 	});
 	osm.addTo(lmap);
 
