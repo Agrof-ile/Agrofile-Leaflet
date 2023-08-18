@@ -21,6 +21,7 @@
   "homepage": "https://github.com/Weltskaiser/Agrofile-Leaflet#readme",
   "devDependencies": {
     "@types/leaflet": "^1.9.3",
+    "@types/mapbox__geojson-area": "^0.2.1",
     "@types/node": "^20.3.2",
     "@types/shpjs": "^3.4.2",
     "css-loader": "^6.8.1",
@@ -35,6 +36,7 @@
     "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
+    "@mapbox/geojson-area": "^0.2.2",
     "axios": "^1.4.0",
     "fs": "^0.0.1-security",
     "leaflet": "^1.9.4",

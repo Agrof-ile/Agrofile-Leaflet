@@ -3,6 +3,7 @@ import "leaflet/dist/leaflet.css"; // Leaflet's CSS
 import "./leaflet-icon-correction.css"; // Seems like a bug : Leaflet can't load local icons located in leaflet/dist/images, so we download them from the web instead
 import shp from "shpjs"; // Read SHP as GeoJSON for Leaflet
 import axios from "axios"; // Requests
+import geojsonArea from "@mapbox/geojson-area"
 
 // Retrieve the options ids of the list used for our multiple choice field
 let find_prop_options_i = function(columns: any[], prop_id: string): any {
@@ -18,6 +19,11 @@ let find_prop_options_i = function(columns: any[], prop_id: string): any {
 	return undefined
 }
 
+// Returns true if the property's id begins with strings indicating the property is a list
+let is_prop_list = function(prop_id: string): boolean {
+	return prop_id.substring(0, 5) === "radio" || prop_id.substring(0, 8) === "checkbox" || prop_id.substring(0, 5) === "liste" ? true : false
+}
+
 // Core filtering function (except for the area)
 let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_show: L.LayerGroup<any>, layer_collections: any): void {
 	// When filtering we have to rebuild the displayed layer group from scratch, thus we clear all displayed layers
@@ -27,7 +33,7 @@ let checkboxes_toogle_layers = function(props_titles_keys: string[], layers_to_s
 	props_titles_keys.forEach((prop_id: string) => {
 		// console.log("prop_id", prop_id)
 		// We analyse each (multiple choice) property value
-		if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+		if (is_prop_list(prop_id)) {
 			let all_prop_filled_layers = L.layerGroup()
 			let ok_layers = L.layerGroup()
 			Object.keys(layer_collections[prop_id]).forEach((prop_option_id: string) => {
@@ -106,14 +112,21 @@ let set_popup_content_layer_collections = function(feature: any, geojson_layer: 
 		popup_text += `<p style="margin-top:0.5em; margin-bottom:0.5em"><b>${props_titles[prop_id]}</b><br>`
 
 		const prop_option_id = feature["properties"][prop_id]
+		console.log("Salut")
 		if (prop_id === "url") {
+			popup_text += `<a href=${prop_option_id}>${prop_option_id}</a>`
+		}
+		else if (prop_id === "fichierfiche_projet" || prop_id === "imagebf_image1") {
+			popup_text += "Voir sur la fiche (lien ci-dessous)"
+		}
+		else if (prop_id === "url") {
 			popup_text += `<a href=${prop_option_id}>${prop_option_id}</a>`
 		} else {
 			if (prop_option_id === "") {
 				popup_text += "Champ non renseigné"
 				// console.log("Champ non renseigné")
 			} else {
-				if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+				if (is_prop_list(prop_id)) {
 					// Complex_prop_option_id may contain multiple prop_option_id separated by commas "," e.g. "mars,avril,mai"
 					// So we use this function to cut the string in an array in order to deal with each prop_option_id e.g ["mars", "avril", "mai"]
 					const cut_prop_option_id = parse_prop_option_id(prop_option_id)
@@ -140,6 +153,16 @@ let set_popup_content_layer_collections = function(feature: any, geojson_layer: 
 	geojson_layer.bindPopup(popup_text, { maxHeight: 400 });
 }
 
+// Get the area of the features
+let get_geojson_area = function(polygon_geojson: any): number {
+	let area = 0
+	polygon_geojson.features.forEach((geom_feature: any) => {
+		area += geojsonArea.geometry(geom_feature["geometry"])
+		console.log("geom_area", geojsonArea.geometry(geom_feature["geometry"]))
+	})
+	return area
+}
+
 // Get the mean position of features' geometries' points
 let get_mean_coords = function(polygon_geojson_features: any): Array<number> {
 	let mean_coords = [0, 0]
@@ -163,11 +186,12 @@ let get_mean_coords = function(polygon_geojson_features: any): Array<number> {
 let load_geometries = async function(geojson_form: any, props_titles_keys: string[], props_titles: any, props_ids: any, form_bazarlist: any, layer_collections: any, layers_to_show: L.LayerGroup<any>, ) {
 	// When filtering we have to rebuild the displayed layer group from scratch, thus we clear all displayed layers
 	layers_to_show.clearLayers()
-	await geojson_form.features.forEach(async (form_feature: { id: string | number; properties: any }) => {
+	await Object.keys(geojson_form).forEach(async (form_card_key: any) => {
+		const form_card = geojson_form[form_card_key]
 		// First, we load the geometry data (SHP file as ZIP)
 		// Its location is in the form answer's properties
 		const shp_file_prop_id = props_ids["shp_file"]
-		const zipshp_filename = form_feature["properties"]["fichier" + shp_file_prop_id]
+		const zipshp_filename = form_card["fichier" + shp_file_prop_id]
 		const origin_path = window.location.origin
 		const path_to_shp = `${origin_path}/files/${zipshp_filename}`
 		console.log("path_to_shp_zipendno", path_to_shp)
@@ -178,14 +202,17 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
 		// Read our SHP ZIP file as GeoJSON (Leaflet can only read GeoJSON)
 		const polygon_geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
-		console.log("polygon_geojson", polygon_geojson)
+		console.log("raw_polygon_geojson", polygon_geojson)
 
 		// The geometry data that was in the SHP does not contain yet the form data that is only in the form's answers JSON so far.
 		// So let's merge the form data in our geometry GeoJSON, so that it will be filterable by Leaflet.
+		let area = get_geojson_area(polygon_geojson) / 10000 // Convert square meters to hectares
+		area = Math.round((area + Number.EPSILON) * 100) / 100 // Round to 2 decimals
 		polygon_geojson.features.forEach((geom_feature: any) => {
-			geom_feature["properties"] = form_feature["properties"]
+			geom_feature["properties"] = form_card
+			geom_feature["properties"][props_ids["area"]] = area
 		})
-		console.log("polygon_geojson", polygon_geojson)
+		console.log("props_filled_polygon_geojson", polygon_geojson)
 
 		let area_range_min = Number((document.getElementById("min_input") as HTMLInputElement).value);
 		let area_range_max = Number((document.getElementById("max_input") as HTMLInputElement).value);
@@ -200,7 +227,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 			style: // The layer's appearance
 				function (geoJsonFeature: any) {
 					return {
-						"fillColor": type_of_land_options_ids[geoJsonFeature["properties"]["radioListe" + type_of_land_list_id + type_of_land_prop_id]],
+						"fillColor": type_of_land_options_ids[geoJsonFeature["properties"]["radio" + type_of_land_list_id + type_of_land_prop_id]],
 						"color": "#000",
 						"weight": 1,
 						"opacity": 1,
@@ -230,7 +257,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 				// Set the marker's position to the mean position of the features' geometries' points
 				"coordinates": get_mean_coords(polygon_geojson.features)
 			},
-			"properties": form_feature["properties"]
+			"properties": form_card
 		} as any
 
 		const point_geojson_layer = new L.GeoJSON(point_geojson, {
@@ -249,7 +276,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 				function (feature: any, latlng: L.LatLng) {
 					const geojsonMarkerOptions = {
 						radius: 15,
-						fillColor: type_of_land_options_ids[feature["properties"]["radioListe" + type_of_land_list_id + type_of_land_prop_id]],
+						fillColor: type_of_land_options_ids[feature["properties"]["radio" + type_of_land_list_id + type_of_land_prop_id]],
 						color: "#000",
 						weight: 1,
 						opacity: 1,
@@ -294,7 +321,7 @@ let load_map = async function(): Promise<void> {
 	console.log("bazarliste_values_map:", bazarliste_values_map)
 	const form_bazarlist = bazarliste_values_map["forms"][map_form_id]
 
-	const geojson_form = (await axios.get(`/?api/forms/${map_form_id}/entries/geojson`)).data // Get the form responses as GeoJSON
+	const geojson_form = (await axios.get(`/?api/forms/${map_form_id}/entries/json`)).data // Get the form responses as GeoJSON
 	console.log("geojson_form:", geojson_form)
 
 	// By default, YesWiki's uploaded files contain an underscore "_" at the end, making the .zip files unreadable by jszip (used by shpjs)
@@ -316,7 +343,7 @@ let load_map = async function(): Promise<void> {
 	props_titles_keys.forEach((prop_id: string) => {
 		// console.log("prop_id", prop_id)
 		// Fields beginning by these strings are multiple choice fields, so we want them to be filterable
-		if (prop_id.substring(0, 10) === "radioListe" || prop_id.substring(0, 13) === "checkboxListe") {
+		if (is_prop_list(prop_id)) {
 			const filter_div = document.createElement("div")
 			filter_div.id = "filter_div-" + prop_id
 
@@ -344,7 +371,7 @@ let load_map = async function(): Promise<void> {
 			prop_form.id = prop_id
 
 			const prop_options_i = find_prop_options_i(form_bazarlist, prop_id) // Retrieve the options ids of the list used for our multiple choice field
-			console.log("prop_options_i", prop_options_i)
+			// console.log("prop_options_i", prop_options_i)
 			const prop_options = form_bazarlist[prop_options_i]["options"]
 			// console.log("prop_options", prop_options)
 
