@@ -1,9 +1,13 @@
-import * as L from "leaflet"; // Mapping tool
+// import * as L from "leaflet"; // Mapping tool
+import * as Gp from 'geoportal-extensions-leaflet';
+let L = Gp.LExtended
 import "leaflet/dist/leaflet.css"; // Leaflet's CSS
 import "./leaflet-icon-correction.css"; // Seems like a bug : Leaflet can't load local icons located in leaflet/dist/images, so we download them from the web instead
 import shp from "shpjs"; // Read SHP as GeoJSON for Leaflet
 import axios from "axios"; // Requests
 import geojsonArea from "@mapbox/geojson-area"
+
+const AREA_PROP_ID = "surface_numerique";
 
 // Retrieve the options ids of the list used for our multiple choice field
 let find_prop_options_i = function(columns: any[], prop_id: string): any {
@@ -201,8 +205,18 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		const path_to_shp_zipendok = path_to_shp.substring(0, path_to_shp.length-1)
 		console.log("path_to_shp_zipendok", path_to_shp_zipendok)
 		// Read our SHP ZIP file as GeoJSON (Leaflet can only read GeoJSON)
-		const polygon_geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
+		let polygon_geojson
+		try {
+			polygon_geojson = await shp(path_to_shp_zipendok) as GeoJSON.FeatureCollection
+		} catch (error) {
+			console.log("Shapefile invalide")
+			return;
+		}
 		console.log("raw_polygon_geojson", polygon_geojson)
+
+		if (polygon_geojson === undefined) { // Wrong file format
+			return;
+		}
 
 		// The geometry data that was in the SHP does not contain yet the form data that is only in the form's answers JSON so far.
 		// So let's merge the form data in our geometry GeoJSON, so that it will be filterable by Leaflet.
@@ -210,13 +224,14 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		area = Math.round((area + Number.EPSILON) * 100) / 100 // Round to 2 decimals
 		polygon_geojson.features.forEach((geom_feature: any) => {
 			geom_feature["properties"] = form_card
-			geom_feature["properties"][props_ids["area"]] = area
+			// geom_feature["properties"][props_ids["area"]] = area
+			geom_feature["properties"][AREA_PROP_ID] = area
 		})
 		console.log("props_filled_polygon_geojson", polygon_geojson)
 
 		let area_range_min = Number((document.getElementById("min_input") as HTMLInputElement).value);
 		let area_range_max = Number((document.getElementById("max_input") as HTMLInputElement).value);
-		const area_prop_id = props_ids["area"]
+		// const area_prop_id = props_ids["area"]
 		const type_of_land_list_id = props_ids["type_of_land"]["list_id"]
 		const type_of_land_prop_id = props_ids["type_of_land"]["prop_id"]
 		const type_of_land_options_ids = props_ids["type_of_land"]["options_ids"]
@@ -243,9 +258,11 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 			filter: // Select which feature will be displayed based on their properties
 				function(feature: any) {
 					// Here we filter the layers according to their area
-					return (feature.properties[area_prop_id] <= area_range_max) && (feature.properties[area_prop_id] >= area_range_min);
+					return (feature.properties[AREA_PROP_ID] <= area_range_max) && (feature.properties[AREA_PROP_ID] >= area_range_min);
 				}
 		})
+
+		console.log("geojson_layer", geojson_layer)
 
 		layers_to_show.addLayer(geojson_layer)
 
@@ -270,7 +287,7 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 				},
 			filter:
 				function(feature: any) {
-					return (feature.properties[area_prop_id] <= area_range_max) && (feature.properties[area_prop_id] >= area_range_min);
+					return (feature.properties[AREA_PROP_ID] <= area_range_max) && (feature.properties[AREA_PROP_ID] >= area_range_min);
 				},
 			pointToLayer: // Equivalent to the geometry's style option
 				function (feature: any, latlng: L.LatLng) {
@@ -287,6 +304,8 @@ let load_geometries = async function(geojson_form: any, props_titles_keys: strin
 		})
 
 		layers_to_show.addLayer(point_geojson_layer)
+
+		console.log("layers_to_show", layers_to_show)
 
 		// console.log("------------------ layer_collections:", layer_collections)
 	});
@@ -463,8 +482,22 @@ let load_map = async function(): Promise<void> {
 
 	console.log("layer_collections:", layer_collections)
 
+	// IGN orthophoto map
+	var OrthoIGN = L.tileLayer('https://wxs.ign.fr/{ignApiKey}/geoportail/wmts?'+
+		'&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&TILEMATRIXSET=PM'+
+		'&LAYER={ignLayer}&STYLE={style}&FORMAT={format}'+
+		'&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}',
+		{
+			ignApiKey: 'decouverte',
+			ignLayer: 'ORTHOIMAGERY.ORTHOPHOTOS',
+			style: 'normal',
+			format: 'image/jpeg',
+			service: 'WMTS'
+	});
+
 	const baseMaps = {
-		"OpenStreetMap": osm
+		"OpenStreetMap": osm,
+		"Géoportail": OrthoIGN
 	};
 	let overlayMaps = {
 		"Parcellaires": layers_to_show
@@ -473,6 +506,7 @@ let load_map = async function(): Promise<void> {
 
 	// Allow the user to switch base map (useless because we have only set an OpenStreetMap base map) and enable/disable our geometries' displaying
 	L.control.layers(baseMaps, overlayMaps).addTo(lmap);
+
 }
 
 load_map();
