@@ -492,7 +492,8 @@ let load_map = async function(): Promise<void> {
 			ignLayer: 'ORTHOIMAGERY.ORTHOPHOTOS',
 			style: 'normal',
 			format: 'image/jpeg',
-			service: 'WMTS'
+			service: 'WMTS',
+			attribution: 'Carte © IGN-F/Geoportail'
 	});
 
 	const baseMaps = {
